@@ -1,0 +1,20 @@
+{
+ "source": "DEMO-0001 评分细则（原文见 rubric.md）",
+ "full": 100.0,
+ "role": "上市公司财务核查",
+ "groups": {
+  "S": {"label": "核查", "scale": 1.0, "business": true}
+ },
+ "items": [
+  {"id": "R1", "max": 30, "group": "S", "title": "2025 年末资产负债率"},
+  {"id": "R2", "max": 40, "group": "S", "title": "结论：是否超过 60%", "requires": ["R1"]},
+  {"id": "R3", "max": 20, "group": "S", "title": "2024 年末对比与变动"},
+  {"id": "R4", "max": 10, "group": "S", "title": "交付可读"}
+ ],
+ "batches": [["R1", "R2", "R3", "R4"]],
+ "keywords": ["资产负债率", "负债合计", "资产总计"],
+ "L": false,
+ "round": 2,
+ "all_or_nothing": true,
+ "deduct_group": "S"
+}

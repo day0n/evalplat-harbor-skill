@@ -1,0 +1,43 @@
+schema_version = "1.4"
+artifacts = ["/app/output"]
+
+[task]
+# org/name：字母数字和 ._-；改版时 version 递增
+name = "demo/fin-rubric-sample"
+version = "1.0.0"
+description = "DEMO-0001_示例公司｜资产负债率核查（模板示例）"
+
+[metadata]
+# 声明后平台在判分阶段注入判分令牌；必须是平台允许的判分模型
+judge_model = "gpt-6.1-sol"
+task_family = "示例"
+source_package = "<网盘原始包 ID>"
+
+[[metadata.deliverables]]
+path = "/app/output/"
+required = true
+desc = "核查结论（不限文件格式）"
+
+[agent]
+timeout_sec = 3600.0
+
+[verifier]
+timeout_sec = 3600.0
+user = "root"
+environment_mode = "separate"
+
+[verifier.env]
+# 判分模型思考强度、并发批数、单次超时、总预算（秒，要小于 verifier.timeout_sec）、输出上限
+GRADE_REASONING_EFFORT = "max"
+GRADE_JUDGE_PARALLEL = "4"
+GRADE_CALL_TIMEOUT = "1200"
+GRADE_JUDGE_BUDGET = "3000"
+GRADE_MAX_OUTPUT_TOKENS = "32000"
+
+[environment]
+os = "linux"
+build_timeout_sec = 3600.0
+network_mode = "no-network"
+cpus = 2
+memory_mb = 4096
+storage_mb = 10240

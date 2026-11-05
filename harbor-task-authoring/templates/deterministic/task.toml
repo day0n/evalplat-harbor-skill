@@ -1,0 +1,20 @@
+schema_version = "1.4"
+artifacts = ["/app/output"]
+
+[task]
+name = "demo/fin-deterministic-sample"
+version = "1.0.0"
+description = "资产负债率计算（确定性判分模板）"
+
+[agent]
+timeout_sec = 1800.0
+
+[verifier]
+timeout_sec = 300.0
+environment_mode = "separate"
+
+[environment]
+build_timeout_sec = 1800.0
+network_mode = "no-network"
+cpus = 1
+memory_mb = 2048
