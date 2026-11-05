@@ -1,164 +1,240 @@
 ---
 name: harbor-task-authoring
-description: 在 Evalplat 评测平台上按 Harbor 格式造题：把专家原始包（题面、输入材料、Gold/参考成果、文字评分细则）转成可上传的 Harbor 题包，写 task.toml、instruction.md、Dockerfile、判分程序（确定性脚本或判分模型按 rubric 逐项打分）、参考解，做本地预检与 evalplat try 回测，交专家确认后再上传。用户提到造题、出题、题包、Harbor、task.toml、rubric、评分细则、Gold、参考解、回测、evalplat check/try/upload、专家原始包转换时使用。
+description: Evalplat 平台 Harbor 题包的标准格式：目录结构、task.toml、instruction.md、Dockerfile、参考解、评分细则 rubric.md 与 items.json 的写法，附可直接复制的样例题包。用户提到造题、出题、题包、Harbor 格式、task.toml、rubric、评分细则、Gold、参考解时使用。
 ---
 
-# Evalplat Harbor 造题
+# Evalplat Harbor 题包格式
 
-本 skill 面向两类人：**出题专家**（懂业务、出题面和评分细则）和**帮专家落地的工程同学或 Claude**。
-目标：做出一个"专家认可、平台能验收、判分可信"的 Harbor 题包。
+样例题包在 `templates/rubric-judge/`（判分模型按评分细则打分，文档类题用这个），
+纯数值、可程序比对的题参考 `templates/deterministic/`。复制一份，按下面的格式改。
 
-所有内容来自平台代码（`packages/task_types/.../harbor/`）和 2026-10~11 月金融题的实际造题过程。
-细节按需读 `references/`：
-
-| 文件 | 什么时候读 |
-|---|---|
-| `references/format.md` | 写目录、task.toml、判分协议、平台限制、CLI 命令时 |
-| `references/rubric.md` | 写评分细则、items.json、判分程序时 |
-| `references/backtest.md` | 回测参考解/空卷/错例，准备交付与验收时 |
-| `references/pitfalls.md` | 动手前通读一遍；排查低分或误判时 |
-| `references/checklist.md` | 交给专家确认前、上传前逐条打勾 |
-
-模板在 `templates/`：`rubric-judge/`（判分模型按专家细则打分，金融文档类题的默认选择）、`deterministic/`（程序直接比对答案）。
-预检脚本：`python3 scripts/check_package.py <题包目录>`（只用标准库，Python 3.11+）。
-
----
-
-## 红线（任何时候都不能破）
-
-1. **评分细则原文不变形。** 专家的 rubric 原样放进 `tests/rubric/rubric.md`；程序只"登记"细则写明的 ID、分值、前提、扣分规则，不自己发明条目、不改写、不合并、不"浓缩"。需要改细则时，让专家改，或者把改动列出来请专家逐条确认。
-2. **题面、标准答案、考点、解题思路由专家写或确认。** AI 改过的地方要单独列出、专家逐项认可。不要把 AI 生成的规则当成"专家原始规则"交出去。
-3. **以最新原始包为准。** 原始包有新版时，按文件索引的 SHA-256 核对，从新版重新转换；不在旧 Harbor 包上手改。
-4. **规则对所有答卷一样。** 豁免、扣分、容差写进细则，对每份答卷都生效；不给 Gold 单开免扣分支。某条"其实不算错"，只能改细则。
-5. **答案不进作答环境。** Gold、rubric、评卷参考只放 `tests/` 或 `solution/`；`environment/` 下的东西会打进镜像，Agent 看得到。
-6. **花钱、上线的动作先问。** `evalplat try`（真实判分模型回测）、`evalplat upload`（构建 + 参考解验收）、建 Job 都会产生费用。专家确认前不在平台建任务、不建 Job（"先不跑，我让专家确定了再跑"）。
-7. **不提交密钥，不修改作答轨迹。** 题包里不放任何 key；跑出来的轨迹和判分原文是交付记录，不能改。
-
----
-
-## 流程
-
-### 0. 先确认交付形态
-
-问清楚对方要的是什么：**Harbor 题包**，还是**对方自己的采集表**（例如 Excel 采集表 + input_files + solution）。
-曾经出现过：我们做完整套 Harbor 包，对方要的其实是专家填的采集表——这时只需整理专家原始数据，不需要环境和判分程序，也不要把我们自己的 rubric 塞进去。
-
-### 1. 收原始包
-
-- 按 `00_原始包文件索引*.csv`（带 SHA-256）逐个核对，缺文件或哈希不符先停下问。
-- 读 `00_修订说明`、交接说明、专家确认意见，列出本版和上一版的差异。
-- 分清三类材料：**给 Agent 的**（题面、输入材料、空表/模板）、**给判分的**（评分细则、Gold、评卷参考、复核记录、错例）、**只存档的**（原始审核材料全量）。
-
-### 2. 搭目录
-
-从 `templates/rubric-judge/` 复制一份，改名为题号。目录含义：
+## 1. 目录结构
 
 ```
 <题号>/
-├── task.toml                         # 元数据、时限、资源、网络、判分模型
-├── instruction.md                    # 给 Agent 的题面（专家原文 + 环境说明）
+├── task.toml                         # 题目配置
+├── instruction.md                    # 题面（作答方看到的全部要求）
 ├── environment/
-│   ├── Dockerfile                    # 作答镜像（判分复用它）
-│   └── input_files/input/...         # 输入材料 → 镜像里 /app/input/（只读）
+│   ├── Dockerfile                    # 作答环境
+│   └── input_files/input/...         # 输入材料，作答时位于 /app/input/（只读）
 ├── solution/
-│   ├── solve.sh                      # 参考解：把 Gold 原样拷到 /app/output/
-│   └── golden_output/...             # Gold 原件（逐字节拷贝）
+│   ├── solve.sh                      # 参考解脚本
+│   └── golden_output/...             # Gold（专家定稿原件）
 └── tests/
-    ├── test.sh                       # 判分入口，写 /logs/verifier/reward.json
-    ├── grader/                       # 通用判分程序（一般不用改）
+    ├── test.sh                       # 判分入口
+    ├── grader/                       # 判分程序（沿用样例，不用改）
     └── rubric/
-        ├── rubric.md                 # 专家评分细则原文
-        ├── items.json                # 评分项登记：ID、分值、组、前提、分批
-        ├── instruction.md            # 题面副本（判分容器里看不到 /app 下的题面）
-        ├── 判分说明.md               # 细则 → 程序的逐条对应、已知局限
-        ├── reference/                # 只给判分模型看的 Gold/评卷参考
-        └── source/                   # 原始审核材料存档（判分不读，可选）
+        ├── rubric.md                 # 评分细则原文
+        ├── items.json                # 评分项登记
+        ├── instruction.md            # 题面副本，与顶层 instruction.md 相同
+        ├── 判分说明.md               # 细则与程序的对应说明
+        └── reference/...             # 评卷参考（Gold 副本等），只给判分模型
 ```
 
-纯数值、可程序比对的题用 `templates/deterministic/`。
+作答方只能看到 `instruction.md` 和 `environment/` 里的内容；`solution/`、`tests/` 不可见。
 
-### 3. 写 instruction.md
+## 2. task.toml
 
-- 专家题面原文放前面，不改业务表述。
-- 末尾加一段环境说明，固定写法：
+```toml
+schema_version = "1.4"
+artifacts = ["/app/output"]
 
-  ```
-  ---
+[task]
+name = "docrev/fin-xxx-0001"          # org/name：字母、数字和 ._-
+version = "1.0.0"                     # 每次改版递增
+description = "题号_标题（题型）"
 
-  题包材料在 `/app/input/`（只读），空表为 `input/xxx.xlsx`。
-  全部交付文件放在 `/app/output/`（当前工作目录为 `/app`）。
-  ```
-- 题面里的相对路径（`input/`、`材料/`）在 `/app` 下要真实存在。
-- 写清：交什么、放哪、格式要求（或"不限文件格式"）、是否可以联网、结论必须给出（可以附限定条件）。
-- 不要把评分目标、Gold 位置、豁免条目写进题面。
-- 不要出现 `/tests`、`/solution`。
+[metadata]
+judge_model = "gpt-6.1-sol"           # 判分模型；程序判分的题删掉这行
+task_family = "资产筛选"              # 题型
+source_package = "<原始包 ID>"
 
-### 4. 写 Dockerfile
+[[metadata.deliverables]]
+path = "/app/output/"
+required = true
+desc = "交付物说明"
 
-- 基础镜像用 `python:3.12-slim`（执行机已预置、pip/apt 走内网源）；其他外部镜像要先同步到 ACR。
-- 判分依赖（openpyxl、pdfplumber、LibreOffice、中文字体等）一起装进镜像——判分复用作答镜像，判分时不能联网装依赖。
-- 输入材料 `COPY input_files/ /app/`，`/app` 设为只读；`/app/output` 归 `agent` 用户可写。模板里已写好。
+[agent]
+timeout_sec = 14400.0                 # 作答时限（秒）
 
-### 5. 写 task.toml
+[verifier]
+timeout_sec = 7200.0                  # 判分时限（秒）
+user = "root"
+environment_mode = "separate"
 
-照模板改。必须注意：
-- `[task] name` 用 `org/name` 格式（字母数字和 `._-`）；改版时 `version` 递增。
-- 顶层 `artifacts = ["/app/output"]`：判分在独立容器里，不声明就拿不到作答文件。
-- `[verifier] environment_mode = "separate"`：显式写，否则交付标准 S7 可能不过。
-- 模型判分题在 `[metadata]` 写 `judge_model`（如 `gpt-6.1-sol`）；平台据此在判分阶段注入判分令牌。
-- `network_mode`：题面允许查公开信息就 `public`，否则 `no-network`。
-- 时限和资源按题目实际需要估；云沙箱最大 4 核 16G、单次最长 24 小时、磁盘 15G 且含镜像。
+[verifier.env]
+GRADE_REASONING_EFFORT = "max"        # 判分模型思考强度
+GRADE_JUDGE_PARALLEL = "4"
+GRADE_CALL_TIMEOUT = "1200"
+GRADE_JUDGE_BUDGET = "6600"           # 判分总预算（秒），小于 verifier.timeout_sec
+GRADE_MAX_OUTPUT_TOKENS = "32000"
 
-字段全集、默认值、拒收规则见 `references/format.md`。
-
-### 6. 写判分
-
-**模型判分（默认）**：
-- `rubric.md` = 专家细则原文。
-- `items.json` 登记细则里的每个评分项：`id`、`max`、`group`、`title`，以及细则写明的 `requires`（必要前提）、组折算 `scale`、`all_or_nothing`（只给满分或零分）、`no_deduct`（不设清单外扣分）、`deduct_group`/`deduct_note`（扣分规则）、`gold_target`（Gold 原件里的评分目标行）。合计必须等于 `full`（通常 100）。
-- `reference/` 放 Gold 原件和评卷参考，只给判分模型。
-- 有可以程序核对的数字落点（如报告期更新题的逐行数值），写 `tests/rubric/extra.py` 做确定性评分，其余交判分模型。
-- 判分模型不可用时**不写 reward**（平台记判分出错，不记 0 分）；空卷直接 0 分，不调模型。通用判分程序已实现这两点。
-
-写法细节、字段说明、经验见 `references/rubric.md`。
-
-**确定性判分**：`test.sh` 在每条路径都写 `/logs/verifier/reward.txt` 或 `reward.json`，分数归一化到 0~1。
-
-### 7. 放参考解（Gold）
-
-- Gold 用专家定稿**原件**，逐字节拷贝，不删行、不重存、不另做"精简版"，记下 SHA-256。
-- `solve.sh` 把原件拷到 `/app/output/`，再用 `sha256sum -c` 核对。
-- Gold 内部不能自相矛盾；资料推不出来的数据写"作答资料未披露（待核）"，资料里有的不能误删；图片、扫描件、签章页不能丢。
-- 用 Gold 对着细则逐条自检：正向项应全过，扣分项一条都不触发。
-
-### 8. 本地预检
-
-```bash
-python3 scripts/check_package.py ./<题号>      # 结构、编码、字段、items 合计、答案泄漏
-evalplat check ./<题号>                         # 服务端解析，不构建、不花钱
+[environment]
+os = "linux"
+build_timeout_sec = 3600.0
+network_mode = "no-network"           # 允许查公开信息时写 "public"
+cpus = 4                              # 最大 4 核
+memory_mb = 16384                     # 最大 16G
+storage_mb = 10240
 ```
 
-### 9. 回测（先问，会花钱）
+## 3. instruction.md
 
-用 `evalplat try` 跑，不建任务，3 天后自动删除：
+题面原文在前，末尾固定加一段环境说明：
 
-```bash
-evalplat try ./<题号> --wait                    # 参考解：模型判分题要求 ≥90（专家口径）
-evalplat try ./<题号> --solution nop --wait     # 空卷：应为 0 或很低
-```
+```markdown
+FIN-XXX-0001
 
-再做变体包（只换 `solution/` 和题名）：等价另名、只写待核、分项错合计凑对、照抄输入、捏造事实、漏一项等，确认每个变体的得分符合细则预期。同一份 Gold 至少跑 3 轮看波动。方法和标准见 `references/backtest.md`。
+# 标题
 
-### 10. 交专家确认，再上传
-
-- 写《判分说明》（细则 → 程序逐条对应、已知局限）、《回测明细》（每个变体每轮得分）、《00_说明_请专家确认》（版本、改了哪些文件、哈希、待专家定的问题）。
-- 每题打一个 zip，按题号命名，放网盘；旧版先移进回收站再上传同名文件。
-- 专家确认后再 `evalplat upload ./<题号> --wait`；之后 `evalplat version baseline <版本ID> --nop 1 --oracle 2 --yes` 补齐 S4 基线（参考解连验收那次共 3 次）。
+（专家题面原文：要做什么、依据哪些材料、交什么、格式要求或"不限文件格式"、能否联网）
 
 ---
 
-## 和用户/专家沟通
+题包材料在 `/app/input/`（只读），空表为 `input/xxx.xlsx`。
+全部交付文件放在 `/app/output/`（当前工作目录为 `/app`）。
+```
 
-- 一律简体中文；结论先行，列表代替长段落。
-- 发现细则和 Gold 冲突、细则有歧义、某条按字面所有模型都会错：列出来请专家定，不要自己挑一种改。
-- 低分分析只讲模型为什么错、题目哪里需要澄清；不编造理由。
+题面里引用的材料路径（如 `input/项目底稿/`）要与 `environment/input_files/input/` 下的实际目录一致。
+评分目标、Gold 位置不写进题面。
+
+## 4. environment/Dockerfile
+
+```dockerfile
+FROM python:3.12-slim
+
+RUN useradd -m -u 1000 agent
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates bash jq ripgrep unzip poppler-utils \
+        libreoffice-writer libreoffice-calc \
+        fonts-noto-cjk fonts-arphic-ukai fonts-arphic-uming \
+        tesseract-ocr tesseract-ocr-chi-sim \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir \
+        markitdown openpyxl pandas python-docx python-pptx pypdf pdfplumber pymupdf PyYAML chardet pytesseract pillow
+
+COPY input_files/ /app/
+RUN chown -R root:root /app && chmod -R a-w /app \
+    && mkdir -p /app/output && chown agent:agent /app/output && chmod 755 /app/output
+WORKDIR /app
+```
+
+一般只需要改输入材料，Dockerfile 照抄。Gold、评分细则不要放进 `environment/`。
+
+## 5. solution（参考解）
+
+`golden_output/` 放专家定稿原件。`solve.sh` 把它原样拷到 `/app/output/` 并校验哈希：
+
+```bash
+#!/bin/bash
+set -euo pipefail
+mkdir -p /app/output
+cp "/solution/golden_output/专家定稿表.xlsx" /app/output/
+echo "<SHA-256>  /app/output/专家定稿表.xlsx" | sha256sum -c -
+```
+
+## 6. tests（判分）
+
+### test.sh
+
+```bash
+#!/bin/bash
+set -uo pipefail
+mkdir -p /logs/verifier
+python3 /tests/grader/rubric_verify.py \
+  --task /tests/rubric \
+  --instruction /tests/rubric/instruction.md \
+  --workspace /app/output \
+  --logs /logs/verifier
+```
+
+### rubric/rubric.md
+
+专家评分细则原文。建议结构：
+
+```markdown
+# 题号 评分细则
+
+## 得分判法
+
+从 0 分起按下列独立行累加。没有明列部分档的行只取全分或零分。
+
+| 编号 | 分值 | 通过条件 | 必要前提 |
+|---|---|---|---|
+| R1 | 30 | 写出 2025 年末资产负债率 65.00%（绝对误差 0.01 个百分点），注明取数来源 | — |
+| R2 | 40 | 明确结论"超过 60%"；只写"待核"不得分 | R1 |
+
+## 额外错误
+
+- 编造资料中没有的数据：每处扣 5 分，最低 0 分；同一事实只扣一次。
+
+## 总分
+
+各行得分之和减额外错误扣分，最低 0，四舍五入至两位小数，满分 100。
+```
+
+数值项写明标准值、单位、容差。
+
+### rubric/items.json
+
+把细则里的评分项逐项登记，分值合计等于 `full`：
+
+```json
+{
+ "source": "评分细则（原文见 rubric.md）",
+ "full": 100.0,
+ "role": "上市公司财务核查",
+ "groups": {
+  "S": {"label": "核查", "scale": 1.0, "business": true}
+ },
+ "items": [
+  {"id": "R1", "max": 30, "group": "S", "title": "2025 年末资产负债率"},
+  {"id": "R2", "max": 40, "group": "S", "title": "结论", "requires": ["R1"]}
+ ],
+ "batches": [["R1", "R2"]],
+ "keywords": ["资产负债率", "负债合计"],
+ "L": false,
+ "round": 2,
+ "all_or_nothing": true
+}
+```
+
+| 字段 | 含义 |
+|---|---|
+| `full` | 满分 |
+| `role` | 判分模型扮演的阅卷人身份 |
+| `groups` | 分组：`label` 名称、`scale` 组折算系数、`business` 是否业务分 |
+| `items` | 评分项：`id`、`max` 分值、`group`、`title`；`requires` 必要前提（可选）|
+| `batches` | 分批交给判分模型评的评分项 ID |
+| `keywords` | 长文件摘取用的关键词（表名、科目名、定位词）|
+| `L` | 是否有 L1–L3 表达质量扣分 |
+| `round` | 总分保留几位小数 |
+| `all_or_nothing` | 细则规定每行只取全分或零分时写 `true` |
+| `no_deduct` | 细则不设额外扣分时写 `true` |
+| `deduct_group` | 额外扣分扣自哪一组 |
+| `deduct_note` | 给判分模型的扣分补充说明（不进题面）|
+| `gold_target` | Gold 原件中的评分目标位置，如 `{"file": "定稿表.xlsx", "sheet": "Sheet1", "row": 7}` |
+
+### rubric/reference/
+
+放 Gold 副本和评卷参考，与 `solution/golden_output/` 中的原件一致。
+
+### rubric/判分说明.md
+
+写明 Gold 来源和 SHA-256，以及一张"细则内容 → items.json 登记"的对照表，见样例。
+
+## 7. 程序判分的题
+
+不用判分模型时，`tests/test.sh` 直接比对答案，写 `/logs/verifier/reward.json`，分数在 0~1：
+
+```json
+{"reward": 1.0}
+```
+
+完整写法见 `templates/deterministic/`。
+
+## 8. 打包
+
+一题一个文件夹、一个 zip，按题号命名（如 `FIN-IBABS-ASV-0001-S09.zip`）。文本文件一律 UTF-8，脚本用 LF 换行。
