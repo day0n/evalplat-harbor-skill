@@ -73,8 +73,8 @@ GRADE_MAX_OUTPUT_TOKENS = "32000"
 os = "linux"
 build_timeout_sec = 3600.0
 network_mode = "no-network"           # 允许查公开信息时写 "public"
-cpus = 4                              # 最大 4 核
-memory_mb = 16384                     # 最大 16G
+cpus = 4                              # 云沙箱最大 4 核
+memory_mb = 16384                     # 云沙箱最大 16G，内存/CPU 比 1~4
 storage_mb = 10240
 ```
 
@@ -165,6 +165,8 @@ python3 /tests/grader/rubric_verify.py \
 |---|---|---|---|
 | R1 | 30 | 写出 2025 年末资产负债率 65.00%（绝对误差 0.01 个百分点），注明取数来源 | — |
 | R2 | 40 | 明确结论"超过 60%"；只写"待核"不得分 | R1 |
+| R3 | 20 | 给出 2024 年末 55.00% 及变动（上升 10.00 个百分点） | — |
+| R4 | 10 | 交回 output/ 下可打开的文件，结论在正文中可直接找到 | — |
 
 ## 额外错误
 
@@ -179,7 +181,7 @@ python3 /tests/grader/rubric_verify.py \
 
 ### rubric/items.json
 
-把细则里的评分项逐项登记，分值合计等于 `full`：
+把细则里的评分项逐项登记，分值合计（乘组折算系数后）等于 `full`。下例与上面的细则示例对应：
 
 ```json
 {
@@ -191,25 +193,28 @@ python3 /tests/grader/rubric_verify.py \
  },
  "items": [
   {"id": "R1", "max": 30, "group": "S", "title": "2025 年末资产负债率"},
-  {"id": "R2", "max": 40, "group": "S", "title": "结论", "requires": ["R1"]}
+  {"id": "R2", "max": 40, "group": "S", "title": "结论：是否超过 60%", "requires": ["R1"]},
+  {"id": "R3", "max": 20, "group": "S", "title": "2024 年末对比与变动"},
+  {"id": "R4", "max": 10, "group": "S", "title": "交付可读"}
  ],
- "batches": [["R1", "R2"]],
+ "batches": [["R1", "R2", "R3", "R4"]],
  "keywords": ["资产负债率", "负债合计"],
  "L": false,
  "round": 2,
- "all_or_nothing": true
+ "all_or_nothing": true,
+ "deduct_group": "S"
 }
 ```
 
 | 字段 | 含义 |
 |---|---|
 | `full` | 满分 |
-| `role` | 判分模型扮演的阅卷人身份 |
+| `role` | 判分模型扮演的阅卷人身份，按题型填写（不写时默认"金融债券注册文件反馈答复"）|
 | `groups` | 分组：`label` 名称、`scale` 组折算系数、`business` 是否业务分 |
 | `items` | 评分项：`id`、`max` 分值、`group`、`title`；`requires` 必要前提（可选）|
 | `batches` | 分批交给判分模型评的评分项 ID |
 | `keywords` | 长文件摘取用的关键词（表名、科目名、定位词）|
-| `L` | 是否有 L1–L3 表达质量扣分 |
+| `L` | 是否有 L1–L3 表达质量扣分；**不写默认 true**，细则没有 L 项时必须写 `false` |
 | `round` | 总分保留几位小数 |
 | `all_or_nothing` | 细则规定每行只取全分或零分时写 `true` |
 | `no_deduct` | 细则不设额外扣分时写 `true` |
