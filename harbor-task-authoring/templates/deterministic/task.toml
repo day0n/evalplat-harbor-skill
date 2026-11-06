@@ -4,13 +4,27 @@ artifacts = ["/app/output"]
 [task]
 name = "demo/fin-deterministic-sample"
 version = "1.0.0"
-description = "资产负债率计算（确定性判分模板）"
+description = "DEMO-0002_六家公司资产负债率计算（程序判分模板）"
+
+[metadata]
+# 不写 judge_model：rubric.json 全部评分项 method = "code"，判分不调用模型
+task_family = "示例"
+sector = "金融"
+sector_code = "FIN-DEMO"
+occupation = "财务分析师"
+workflow = "财务指标计算"
+skills = ["比率计算"]
+difficulty = "easy"
+query_domain = "财务数据计算"
+user_role = "财务分析师"
+output_format = "json"
 
 [agent]
 timeout_sec = 1800.0
 
 [verifier]
 timeout_sec = 300.0
+user = "root"
 environment_mode = "separate"
 
 [environment]

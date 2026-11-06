@@ -1,0 +1,80 @@
+{
+ "schema": "evalplat-rubric/2",
+ "task_id": "DEMO-0002",
+ "role": "财务数据计算",
+ "guidelines": ["全部评分项由程序比对，不调用判分模型。"],
+ "criteria": [
+  {
+   "id": "R01",
+   "description": "answer.json 中 A公司 的 2025 年末资产负债率为 0.6500（78000 ÷ 120000，绝对误差不超过 0.0001）。",
+   "tag": "内容质量-数值与计算准确性",
+   "criterion_type": "Objective",
+   "criterion_necessity": "Explicit",
+   "type": "binary",
+   "weight": 1,
+   "method": "code",
+   "polarity": "positive",
+   "check": {"kind": "json_value", "file": "answer.json", "path": "A公司", "value": 0.65, "tolerance": 0.0001}
+  },
+  {
+   "id": "R02",
+   "description": "answer.json 中 B公司 的 2025 年末资产负债率为 0.4000（20000 ÷ 50000，绝对误差不超过 0.0001）。",
+   "tag": "内容质量-数值与计算准确性",
+   "criterion_type": "Objective",
+   "criterion_necessity": "Explicit",
+   "type": "binary",
+   "weight": 1,
+   "method": "code",
+   "polarity": "positive",
+   "check": {"kind": "json_value", "file": "answer.json", "path": "B公司", "value": 0.4, "tolerance": 0.0001}
+  },
+  {
+   "id": "R03",
+   "description": "answer.json 中 C公司 的 2025 年末资产负债率为 0.6500（52000 ÷ 80000，绝对误差不超过 0.0001）。",
+   "tag": "内容质量-数值与计算准确性",
+   "criterion_type": "Objective",
+   "criterion_necessity": "Explicit",
+   "type": "binary",
+   "weight": 1,
+   "method": "code",
+   "polarity": "positive",
+   "check": {"kind": "json_value", "file": "answer.json", "path": "C公司", "value": 0.65, "tolerance": 0.0001}
+  },
+  {
+   "id": "R04",
+   "description": "answer.json 中 D公司 的 2025 年末资产负债率为 0.4500（90000 ÷ 200000，绝对误差不超过 0.0001）。",
+   "tag": "内容质量-数值与计算准确性",
+   "criterion_type": "Objective",
+   "criterion_necessity": "Explicit",
+   "type": "binary",
+   "weight": 1,
+   "method": "code",
+   "polarity": "positive",
+   "check": {"kind": "json_value", "file": "answer.json", "path": "D公司", "value": 0.45, "tolerance": 0.0001}
+  },
+  {
+   "id": "R05",
+   "description": "answer.json 中 E公司 的 2025 年末资产负债率为 0.7500（48000 ÷ 64000，绝对误差不超过 0.0001）。",
+   "tag": "内容质量-数值与计算准确性",
+   "criterion_type": "Objective",
+   "criterion_necessity": "Explicit",
+   "type": "binary",
+   "weight": 1,
+   "method": "code",
+   "polarity": "positive",
+   "check": {"kind": "json_value", "file": "answer.json", "path": "E公司", "value": 0.75, "tolerance": 0.0001}
+  },
+  {
+   "id": "R06",
+   "description": "answer.json 中 F公司 的 2025 年末资产负债率为 0.2000（30000 ÷ 150000，绝对误差不超过 0.0001）。",
+   "tag": "内容质量-数值与计算准确性",
+   "criterion_type": "Objective",
+   "criterion_necessity": "Explicit",
+   "type": "binary",
+   "weight": 1,
+   "method": "code",
+   "polarity": "positive",
+   "check": {"kind": "json_value", "file": "answer.json", "path": "F公司", "value": 0.2, "tolerance": 0.0001}
+  }
+ ]
+}

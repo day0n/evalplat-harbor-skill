@@ -1,0 +1,100 @@
+{
+ "schema": "evalplat-rubric/2",
+ "task_id": "DEMO-0001",
+ "role": "上市公司财务核查",
+ "guidelines": ["等价表述、合理换算、单位换算正确均可接受。", "资料没有的数据，答卷写“资料未披露”属于正确处理。"],
+ "judge": {"batch_size": 10},
+ "extraction": {"keywords": ["资产负债率", "负债合计", "资产总计"]},
+ "scoring": {"round": 2},
+ "criteria": [
+  {
+   "id": "R01",
+   "description": "写出 2025 年末资产负债率为 65.00%（绝对误差不超过 0.01 个百分点），与“2025”“资产负债率”出现在同一行。",
+   "tag": "内容质量-数值与计算准确性",
+   "criterion_type": "Objective",
+   "criterion_necessity": "Explicit",
+   "type": "binary",
+   "weight": 20,
+   "method": "code",
+   "polarity": "positive",
+   "check": {"kind": "number", "value": 65.0, "tolerance": 0.01, "unit": "%", "context": ["2025", "资产负债率"]}
+  },
+  {
+   "id": "R02",
+   "description": "注明 65.00% 的计算依据：负债合计 78,000 万元 ÷ 资产总计 120,000 万元，且取自《财务摘要》2025-12-31 列。",
+   "tag": "内容质量-事实忠实性",
+   "criterion_type": "Objective",
+   "criterion_necessity": "Explicit",
+   "type": "binary",
+   "weight": 15,
+   "method": "llm",
+   "polarity": "positive"
+  },
+  {
+   "id": "R03",
+   "description": "明确给出结论“2025 年末资产负债率超过 60%”；只写“待核”、不下结论或结论与 65.00% 矛盾均不满足。",
+   "tag": "内容质量-结论正确性",
+   "criterion_type": "Objective",
+   "criterion_necessity": "Explicit",
+   "type": "binary",
+   "weight": 25,
+   "method": "llm",
+   "polarity": "positive",
+   "requires": ["R01"]
+  },
+  {
+   "id": "R04",
+   "description": "写出 2024 年末资产负债率为 55.00%（绝对误差不超过 0.01 个百分点），与“2024”出现在同一行。",
+   "tag": "内容质量-数值与计算准确性",
+   "criterion_type": "Objective",
+   "criterion_necessity": "Explicit",
+   "type": "binary",
+   "weight": 10,
+   "method": "code",
+   "polarity": "positive",
+   "check": {"kind": "number", "value": 55.0, "tolerance": 0.01, "unit": "%", "context": ["2024", "资产负债率"]}
+  },
+  {
+   "id": "R05",
+   "description": "说明资产负债率由 55.00% 上升 10.00 个百分点，并用两期数据解释原因：负债合计增长 41.82%，快于资产总计增长 20.00%。",
+   "tag": "内容质量-分析与论证质量",
+   "criterion_type": "Objective",
+   "criterion_necessity": "Explicit",
+   "type": "gradient",
+   "weight": 20,
+   "method": "llm",
+   "polarity": "positive",
+   "levels": {
+    "1": "写出上升 10.00 个百分点，并用负债合计增幅（41.82%）高于资产总计增幅（20.00%）解释原因，数值正确",
+    "0.5": "写出上升 10.00 个百分点，但没有用两期数据解释原因，或原因中的增幅数值有误",
+    "0": "没有写出变动幅度，或变动幅度错误"
+   }
+  },
+  {
+   "id": "R06",
+   "description": "在 /app/output/ 下交回至少一个文件，作为可读的核查结论交付物。",
+   "tag": "指令遵循",
+   "criterion_type": "Objective",
+   "criterion_necessity": "Explicit",
+   "type": "binary",
+   "weight": 10,
+   "method": "code",
+   "polarity": "positive",
+   "hurdle": true,
+   "check": {"kind": "file_exists", "pattern": "*", "min_count": 1}
+  },
+  {
+   "id": "N01",
+   "description": "编造《财务摘要》中没有的财务数据（如营业收入、净利润、现金流），每个独立事实扣 5 分，最多计 3 次；写“资料未披露”不算。",
+   "tag": "内容质量-事实忠实性",
+   "criterion_type": "Objective",
+   "criterion_necessity": "Implicit",
+   "type": "binary",
+   "weight": 5,
+   "method": "llm",
+   "polarity": "negative",
+   "max_hits": 3,
+   "deduct_from": "total"
+  }
+ ]
+}

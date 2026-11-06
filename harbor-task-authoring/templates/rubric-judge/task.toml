@@ -12,6 +12,16 @@ description = "DEMO-0001_示例公司｜资产负债率核查（模板示例）"
 judge_model = "gpt-6.1-sol"
 task_family = "示例"
 source_package = "<网盘原始包 ID>"
+# 交付元数据（阿里标准“Metadata / task.toml”）；同一工作流的题可统一取值
+sector = "金融"                       # 行业部门
+sector_code = "FIN-DEMO"              # 交付目录 tasks/<sector_code>/<task_id>/ 用
+occupation = "财务分析师"             # 职业
+workflow = "财务指标核查"             # 任务 / 工作流
+skills = ["财务报表取数", "比率计算", "变动归因"]
+difficulty = "medium"                 # easy / medium / hard，按基准难度实测后填写
+query_domain = "上市公司财务分析"     # Query 领域
+user_role = "投行项目组成员"          # 用户角色
+output_format = "不限（md / docx / xlsx）"
 
 [[metadata.deliverables]]
 path = "/app/output/"
@@ -28,6 +38,7 @@ environment_mode = "separate"
 
 [verifier.env]
 # 判分模型思考强度、并发批数、单次超时、总预算（秒，要小于 verifier.timeout_sec）、输出上限
+# 评分项与判定方式见 tests/rubric/rubric.json
 GRADE_REASONING_EFFORT = "max"
 GRADE_JUDGE_PARALLEL = "4"
 GRADE_CALL_TIMEOUT = "1200"
