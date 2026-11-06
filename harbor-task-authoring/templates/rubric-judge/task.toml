@@ -37,13 +37,15 @@ user = "root"
 environment_mode = "separate"
 
 [verifier.env]
-# 判分模型思考强度、并发批数、单次超时、总预算（秒，要小于 verifier.timeout_sec）、输出上限
+# 判分模型思考强度、同时在跑的调用上限、单次超时、总预算（秒，要小于 verifier.timeout_sec）、输出上限、单次送判字数
+# 交付文本全部送判、不摘取；超过 GRADE_CHUNK_CHARS 时按行完整切段逐段通读，长答卷按段数放大总预算与 verifier 超时
 # 评分项与判定方式见 tests/rubric/rubric.json
 GRADE_REASONING_EFFORT = "max"
 GRADE_JUDGE_PARALLEL = "4"
 GRADE_CALL_TIMEOUT = "1200"
 GRADE_JUDGE_BUDGET = "3000"
-GRADE_MAX_OUTPUT_TOKENS = "32000"
+GRADE_MAX_OUTPUT_TOKENS = "64000"
+GRADE_CHUNK_CHARS = "150000"
 
 [environment]
 os = "linux"

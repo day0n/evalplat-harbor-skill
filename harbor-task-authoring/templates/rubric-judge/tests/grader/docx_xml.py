@@ -98,16 +98,14 @@ def docx_has_revisions(path) -> bool:
     return b"<w:ins " in xml or b"<w:del " in xml
 
 
-def xlsx_lines(path, max_rows: int = 2000) -> list:
+def xlsx_lines(path) -> list:
+    """xlsx 按工作表逐行输出全部行（不限行数）。"""
     import openpyxl
     wb = openpyxl.load_workbook(str(path), data_only=True, read_only=True)
     out = []
     for ws in wb.worksheets:
         out.append(f"【工作表 {ws.title}】")
-        for i, row in enumerate(ws.iter_rows(values_only=True)):
-            if i >= max_rows:
-                out.append("【已截断】")
-                break
+        for row in ws.iter_rows(values_only=True):
             vals = ["" if v is None else str(v) for v in row]
             if any(v.strip() for v in vals):
                 out.append(" | ".join(vals).rstrip(" |"))

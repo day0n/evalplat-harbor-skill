@@ -21,8 +21,9 @@
 
 1. `tests/test.sh` → `tests/grader/rubric_verify.py`，读取并校验 `rubric.json`。
 2. 读取真实产物：遍历 `/app/output/` 全部文件；docx 接受全部修订后读正文与表格，pdf 按页抽取，xlsx 读单元格实际值
-   （公式没有缓存值时先用 LibreOffice 重算），超长文件按 `extraction.keywords` 摘取。截断与解析失败写进
-   `reward_detail.json`，不当空答案。
+   （公式没有缓存值时先用 LibreOffice 重算），全部文本送判，不摘取、不截断；同一文件多种格式只送一份（docx 优先）。
+   全文超过 15 万字时按行完整切段、逐段通读摘录后再判定；解析失败、抽不出文字的页写进 `reward_detail.json` 的
+   `coverage`，不当空答案；能抽出的内容没送到判分模型时不写 reward。
 3. `method = "code"` 的项由程序检查：数值项要求指标、期间与数值出现在同一行并带单位，不做全文搜数字。
 4. `method = "llm"` 的正向项分批交给判分模型，模型只输出 yes/no 或档位键、答卷原文证据与理由；
    负向项在正向项评完后单独判定，已在正向项失分的同一错误不再扣。

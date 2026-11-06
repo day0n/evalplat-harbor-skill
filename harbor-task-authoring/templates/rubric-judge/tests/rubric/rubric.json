@@ -4,7 +4,6 @@
  "role": "上市公司财务核查",
  "guidelines": ["等价表述、合理换算、单位换算正确均可接受。", "资料没有的数据，答卷写“资料未披露”属于正确处理。"],
  "judge": {"batch_size": 10},
- "extraction": {"keywords": ["资产负债率", "负债合计", "资产总计"]},
  "scoring": {"round": 2},
  "criteria": [
   {
