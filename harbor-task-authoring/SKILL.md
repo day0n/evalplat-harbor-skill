@@ -75,16 +75,17 @@ desc = "交付物说明"
 timeout_sec = 14400.0                 # 作答时限（秒）
 
 [verifier]
-timeout_sec = 7200.0                  # 判分时限（秒）
+timeout_sec = 12600.0                 # 判分时限（秒）
 user = "root"
 environment_mode = "separate"
 
 [verifier.env]
 GRADE_REASONING_EFFORT = "max"        # 判分模型思考强度
-GRADE_JUDGE_PARALLEL = "4"            # 并发批数
-GRADE_CALL_TIMEOUT = "1200"
-GRADE_JUDGE_BUDGET = "6600"           # 判分总预算（秒），小于 verifier.timeout_sec
-GRADE_MAX_OUTPUT_TOKENS = "32000"
+GRADE_JUDGE_PARALLEL = "4"            # 同时在跑的判分调用上限
+GRADE_CALL_TIMEOUT = "1200"           # 单次调用超时（秒）
+GRADE_JUDGE_BUDGET = "10800"          # 判分总预算（秒），小于 verifier.timeout_sec；长答卷分段多时按段数放大
+GRADE_MAX_OUTPUT_TOKENS = "64000"
+GRADE_CHUNK_CHARS = "150000"          # 单次送判的答卷字数；超过时按行完整切段、逐段通读摘录
 
 [environment]
 os = "linux"
@@ -183,7 +184,6 @@ python3 /tests/grader/rubric_verify.py \
  "role": "上市公司财务核查",
  "guidelines": ["等价表述、合理换算均可接受。"],
  "judge": {"batch_size": 10},
- "extraction": {"keywords": ["资产负债率", "负债合计"]},
  "groups": {"R": {"label": "回复", "scale": 1.0}, "M": {"label": "改件", "scale": 1.0}},
  "scoring": {"round": 2},
  "criteria": [
@@ -245,7 +245,6 @@ python3 /tests/grader/rubric_verify.py \
 | `role` | | 判分模型扮演的阅卷人身份 |
 | `guidelines` | | 全题通用的判分口径（等价表述、换算、载体等），逐条一句 |
 | `judge` | | `batch_size`：每次交给判分模型的评分项条数（默认 10） |
-| `extraction` | | 长文件摘取：`keywords` 定位词，可调 `file_full`、`file_excerpt`、`total` 字数上限 |
 | `groups` | | 分组与组折算系数 `{"代号": {"label", "scale"}}`；写了就每条都要有 `group` |
 | `scoring` | | `round`：总分保留几位小数 |
 
@@ -333,8 +332,12 @@ Gold 来源与 SHA-256、作者与二审人（专业背景）、工时、修订�
 判分程序（`tests/grader/rubric_verify.py`）按以下顺序执行，判据定义、证据读取、逐项判定、总分聚合相互分离：
 
 1. 校验 rubric.json，不合规范直接退出、不写 reward。
-2. 读取 `/app/output/` 下的真实交付文件（docx 接受修订、pdf 按页、xlsx 读实际值、超长按关键词摘取），
-   截断和解析失败都记入明细，不当空答案。
+2. 读取 `/app/output/` 下的真实交付文件（docx 接受修订、pdf 按页、xlsx 读全部行的实际值），全部文本送判，
+   不按关键词摘取、不设字数上限；同一文件多种格式（同目录同名不同扩展名）只送一份（docx 优先），其余格式比对文字是否一致。
+   全文超过 `GRADE_CHUNK_CHARS`（默认 15 万字）时按行完整切段，每段由判分模型通读、逐项摘录证据，再按全部摘录判定。
+   `reward_detail.json` 的 `coverage` 记录每个文件的总字数与已送字数、未重复送判的格式、抽不出文字的文件和 PDF 页；
+   能抽出的内容有任何一处没送到判分模型，不写 reward、以退出码 4 结束（`coverage_incomplete`），平台记判分出错。
+   解析失败记入明细，不当空答案。
 3. `method: "code"` 的项由程序检查。
 4. `method: "llm"` 的正向项分批交给判分模型；模型只输出 binary 的 yes/no 或 gradient 的档位键、答卷原文证据和理由，不给分数。
 5. 负向项在正向项评完后单独判定，附上已评结果，避免重复扣分。
